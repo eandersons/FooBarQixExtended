@@ -6,9 +6,14 @@ require_once 'vendor/autoload.php';
  *
  * @author Edgars Andersons <Edgars@gaitenis.id.lv>
  */
-final class InfQixFoo extends FooBarQix
+final class InfQixFoo extends Transformation
 {
-    protected array $changeMap = [8 => 'Inf', 7 => 'Qix', 3 => 'Foo'];
+    /**
+     * Composite for getting divisibility of sum of all input digits
+     *
+     * @var SumOfDigitsDivisibilityTransformation
+     */
+    private SumOfdigitsDivisibilityTransformation $_divisibilityChange;
 
     /**
      * An integer to check if the sum of input digits is divisible by.
@@ -17,28 +22,44 @@ final class InfQixFoo extends FooBarQix
      */
     private $_divisor = 8;
 
+    protected array $changeMap = [8 => 'Inf', 7 => 'Qix', 3 => 'Foo'];
     protected string $separator = '; ';
 
-    protected function __construct($input)
+    protected function __construct($input, $changeMap = [], $separator = null)
     {
-        parent::__construct($input);
-        $this->_checkDivisibilityOfSumOfInputDigits();
+        parent::__construct($input, $this->changeMap, $this->separator);
+
+        // Initialise composite properties
+        $this->_multipliersChange = new MultipliersTransformation(
+            $this->input,
+            $this->changeMap,
+            $this->separator
+        );
+        $this->_occurrencesChange = new OccurrencesTransformation(
+            $this->input,
+            $this->changeMap,
+            $this->separator
+        );
+        $this->_divisibilityChange = new SumOfDigitsDivisibilityTransformation(
+            $this->input,
+            $this->changeMap,
+            $this->separator,
+            $this->_divisor
+        );
+        $this->output = $this->transform();
     }
 
-    /**
-     * Check if the sum of input integer's digits is divisible by `$intA`
-     *
-     * @return void
-     */
-    private function _checkDivisibilityOfSumOfInputDigits(): void
+    protected function transform(): string
     {
-        if (array_sum($this->inputDigitsAsArray()) % $this->_divisor === 0) {
-            $this->output .= isset($this->changeMap[$this->_divisor])
-                ? $this->changeMap[$this->_divisor]
-                : (string) $this->_divisor;
-        }
+        return implode(
+            $this->separator,
+            array_filter(
+                [$this->_multipliersChange, $this->_occurrencesChange],
+                'strlen'  // To remove empty strings from the array
+                // https://www.php.net/manual/en/function.array-filter.php#111091
+            )
+        ) . $this->_divisibilityChange;
     }
-
 }
 
 InfQixFoo::command($argc, $argv);
